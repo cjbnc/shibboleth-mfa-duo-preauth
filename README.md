@@ -14,6 +14,7 @@ Replace the default conf/authn/mfa-authn-config.xml with the copy
 found in this archive. Customize your copy:
 
 * Change the first authn flow if needed. It is "authn/Password" in this copy. 
+  Make sure to edit the entry key on the second flow to match.
 * Find the maxRetry and timeOut variables and change them as needed.
 * Find the duoScope variable and change it to match your environment. In
   our system, the MFA function gets the bare username and we add
@@ -25,7 +26,15 @@ values set for your environment. This script will use those values for
 your API host and keys.
 
 It may help to increase the "idp.loglevel.idp" to "DEBUG" in
-conf/logback.xml while diong initial testing.
+conf/logback.xml while doing initial testing.
 
+## References
+
+* [DuoAuthnConfiguration](https://wiki.shibboleth.net/confluence/display/IDP30/DuoAuthnConfiguration)
+* [MultiFactorAuthnConfiguration](https://wiki.shibboleth.net/confluence/display/IDP30/MultiFactorAuthnConfiguration)
+* [duo_shibboleth for IdP 3.2 and earlier](https://github.com/duosecurity/duo_shibboleth)
+* [Duo Auth API doc](https://duo.com/docs/authapi)
+* [nashorn javascript http client](https://gist.github.com/billybong/a462152889b6616deb02)
+* [jsSHA javascript SHA implementations](https://github.com/Caligatio/jsSHA)
 
 
