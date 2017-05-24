@@ -10,11 +10,14 @@ the Nashorn/Java8 javascript library.
 
 ## Installation
 
-Replace the default conf/authn/mfa-authn-config.xml with the copy 
-found in this archive. Customize your copy:
+Configure your IdP to work with the built-in Duo/MFA architecture. 
+Refer to the documentation linked in the references below for help.
 
-* Change the first authn flow if needed. It is "authn/Password" in this copy. 
-  Make sure to edit the entry key on the second flow to match.
+Once that works, copy/merge this conf/authn/mfa-authn-config.xml
+with your version. Customize your copy:
+
+* Change the first authn flow if needed. It is "authn/Password" in this
+  copy. Make sure to edit the entry key on the second flow to match.
 * Find the maxRetry and timeOut variables and change them as needed.
 * Find the duoScope variable and change it to match your environment. In
   our system, the MFA function gets the bare username and we add
