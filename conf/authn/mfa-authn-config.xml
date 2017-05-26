@@ -64,17 +64,13 @@
         <value>
         <![CDATA[
             var maxRetry = 3;            // repeat preauth tries
-            var timeOut  = 5 * 1000;     // 5 seconds
+            var timeOut  = 5;            // 5 seconds
             var duoScope = "@ncsu.edu";  // add to bare username to make duo username
 
             var logger = Java.type("org.slf4j.LoggerFactory").getLogger("net.shibboleth.idp.authn.impl.TransitionMultiFactorAuthentication");
             logger.debug("MFA checkDuoPreauth starts");
 
-// inline code includes
-
-// functions below re-uses code from 
-// "nashorn javascript http client"
-// https://gist.github.com/billybong/a462152889b6616deb02
+// inline function code includes
 
 // do a preauth check with retries
 function duoPreauth(username, host, ikey, skey) {
@@ -92,80 +88,27 @@ function duoPreauth(username, host, ikey, skey) {
 
 // defines the duo preauth function in simple javascript
 function duoPreauthOnce(username, host, ikey, skey) {
-    var postdata = "username=" + encodeURIComponent(username + duoScope);
-    logger.debug("MFA checkDuoPreauth - postdata = " + postdata);
-
     var restPath = "/auth/v2/preauth";
-    var preauthUrl = "https://" + host + restPath;
-    logger.debug("MFA checkDuoPreauth - preauthUrl = " + preauthUrl);
 
-    var dateHeader = new Date().toUTCString();
-    logger.debug("MFA checkDuoPreauth - dateHeader = " + dateHeader);
-
-    var unsigned 
-      = dateHeader + "\n" + "POST" + "\n" + host + "\n"
-      + restPath + "\n" + postdata;
-    logger.debug("MFA checkDuoPreauth - unsigned = " + unsigned);
-
-    var mac = javax.crypto.Mac.getInstance("HmacSHA1");
-    var secretKey = new javax.crypto.spec.SecretKeySpec( skey.getBytes(), "HmacSHA1" );
-    mac.init( secretKey );
-    hmac = javax.xml.bind.DatatypeConverter.printHexBinary(mac.doFinal( unsigned.getBytes()));
-    logger.debug("MFA checkDuoPreauth - hmac = " + hmac);
-
-    var basicAuth = javax.xml.bind.DatatypeConverter.printBase64Binary( String(ikey + ':' + hmac).getBytes() );
-    logger.debug("MFA checkDuoPreauth - basicAuth = " + basicAuth);
-
+    // use duo-client to make REST call
     try {
-        // make the connection
-        var con = new java.net.URL(preauthUrl).openConnection(); 
-        con.requestMethod = "POST";
-        con.setRequestProperty("Authorization", "Basic " + basicAuth);
-        con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        con.setRequestProperty("Date", dateHeader);
-        con.setConnectTimeout(timeOut);
-        con.doOutput = true;
-
-        var wr = new java.io.DataOutputStream(con.outputStream);
-        wr.writeBytes(postdata);
-        wr.flush();
-        wr.close();
-
-        if (con.responseCode == 200) {  
-            logger.debug("MFA checkDuoPreauth - REST returned 200 OK");
-            var inReader = new java.io.BufferedReader(new java.io.InputStreamReader(con.inputStream));
-            var inputLine;
-            var response = new java.lang.StringBuffer();
-
-            while ((inputLine = inReader.readLine()) != null) {
-                response.append(inputLine);
-            }
-            inReader.close();
-            var answer = JSON.parse(response.toString());
-        } else if (con.responseCode >= 500) {
-            logger.warn("MFA checkDuoPreauth - REST returned HTTP code  = " + con.responseCode);
-            return "allow";  // these errors passthru immediately
-        } else {
-            logger.warn("MFA checkDuoPreauth - REST returned HTTP code  = " + con.responseCode);
-            return "error";  // anything else might retry
-        }
+        var duoHttp = Java.type("com.duosecurity.client.Http");
+        duoRequest = new duoHttp( "POST", host, restPath, timeOut );
+        duoRequest.addParam("username", username + duoScope);
+        duoRequest.signRequest(ikey, skey, 2); 
+        dResult = duoRequest.executeRequest();
+        logger.debug("MFA checkDuoPreauth - dResult.stat = " + dResult.getString("result") );
+        duoRequest = null;  // cleanup
     }
     catch(err) {
         // timeout or other error
-        logger.warn("MFA checkDuoPreauth - failed: " + err);
+        logger.warn("MFA checkDuoPreauth - duo-client failed: " + err);
         return "error";  // might retry
     }
-
-    if (answer.stat == "OK") {
-        logger.info("MFA checkDuoPreauth - Preauth " + username + " = " + answer.response.status_msg);
-        return answer.response.result;
-    } else {
-        logger.warn("MFA checkDuoPreauth - stat = " + answer.stat );
-        return "error";  // might retry
-    }
+    return dResult.getString("result");
 }
 
-// done with includes. function resumes
+// done with includes. checkDuoPreauth resumes
 
             // default
             nextFlow = "authn/Duo";
@@ -187,7 +130,7 @@ function duoPreauthOnce(username, host, ikey, skey) {
                   "%{idp.duo.integrationKey}",
                   "%{idp.duo.secretKey}"
                 );
-                logger.debug("MFA checkDuoPreauth - preauth result = " + result);
+                logger.info("MFA checkDuoPreauth - preauth " + bareUsername + " = " + result);
  
                 if (result == "auth") {
                     nextFlow = "authn/Duo";

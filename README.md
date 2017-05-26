@@ -2,11 +2,31 @@
 
 This provides a replacement to the Duo failmode=safe functionality that
 was found in Duo's own Shibboleth module for IdP version 3.2 and
-earlier. This code will work with the Shibboleth MFA Duo module in IdP
-3.3 and above. 
+earlier. This code is written to work with the Shibboleth MFA Duo module
+in IdP 3.3 and above.
 
-The script is written in javascript with calls to java classes. 
-It has been tested on a system using the Nashorn/Java8 javascript library. 
+The code is written in javascript with calls to java classes. It has
+been tested on a system using the Nashorn/Java8 javascript library.
+
+## Dependencies
+
+The code depends on Duo's [duo_client_java] library and requires 
+its dependencies as well. Those are currently:
+
+* duo-client-0.2.1 
+* org.json-chargebee-1.0 
+* okhttp-2.3.0 
+
+One way to get those is to manually download them from maven
+repositories when building the IdP. For example:
+
+    # after running the IdP install.sh
+    cd /opt/shibboleth-idp/webapp/WEB-INF/lib/
+    wget https://dl.bintray.com/uniconiam/maven/com/duosecurity/duo-client/0.2.1/duo-client-0.2.1.jar
+    wget http://repo1.maven.org/maven2/org/json/org.json/chargebee-1.0/org.json-chargebee-1.0.jar
+    wget http://repo1.maven.org/maven2/com/squareup/okhttp/okhttp/2.3.0/okhttp-2.3.0.jar
+
+[duo_client_java]: https://github.com/duosecurity/duo_client_java
 
 ## Installation
 
@@ -25,7 +45,7 @@ with your version. Customize your copy:
   the code to suit your environment.
 
 In addition, make sure you already have the conf/authn/duo.properties
-values set for your environment. This script will use those values for
+values set for your environment. This code will use those values for
 your API host and keys.
 
 It may help to increase the "idp.loglevel.idp" to "DEBUG" in
@@ -37,6 +57,5 @@ conf/logback.xml while doing initial testing.
 * [MultiFactorAuthnConfiguration](https://wiki.shibboleth.net/confluence/display/IDP30/MultiFactorAuthnConfiguration)
 * [duo_shibboleth for IdP 3.2 and earlier](https://github.com/duosecurity/duo_shibboleth)
 * [Duo Auth API doc](https://duo.com/docs/authapi)
-* [nashorn javascript http client](https://gist.github.com/billybong/a462152889b6616deb02)
 
 
