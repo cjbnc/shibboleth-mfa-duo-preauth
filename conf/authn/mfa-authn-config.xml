@@ -132,10 +132,10 @@ function duoPreauthOnce(username, host, ikey, skey) {
                 );
                 logger.info("MFA checkDuoPreauth - preauth " + bareUsername + " = " + result);
  
-                if (result == "auth") {
-                    nextFlow = "authn/Duo";
-                } else {
+                if (result == "allow") {
                     nextFlow = null;
+                } else {
+                    nextFlow = "authn/Duo";
                 }
             }
 
