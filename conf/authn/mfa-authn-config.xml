@@ -75,15 +75,27 @@
 // do a preauth check with retries
 function duoPreauth(username, host, ikey, skey) {
     var i = 0;
+
+    // bypass duo - if needed for a failure
+    // return {
+    //     user: username,
+    //     stat: "allow",
+    //     mesg: "allowed after duo connectivity failures"
+    // };
+
     while ( i < maxRetry ) {
         var result = duoPreauthOnce(username, host, ikey, skey);
-        if (result != "error") {
+        if (result.stat != "error" && typeof result.stat !== 'undefined') {
            return result;
         }
         i++;
     }
     logger.warn("MFA checkDuoPreauth - Passthru " + username + " after duo connectivity failures");
-    return "allow";
+    return {
+        user: username,
+        stat: "allow",
+        mesg: "allowed after duo connectivity failures"
+    };
 }
 
 // defines the duo preauth function in simple javascript
@@ -98,6 +110,7 @@ function duoPreauthOnce(username, host, ikey, skey) {
         duoRequest.signRequest(ikey, skey, 2); 
         dResult = duoRequest.executeRequest();
         logger.debug("MFA checkDuoPreauth - dResult.stat = " + dResult.getString("result") );
+        logger.debug("MFA checkDuoPreauth - status_msg = " + dResult.getString("status_msg") );
         duoRequest = null;  // cleanup
     }
     catch(err) {
@@ -105,7 +118,11 @@ function duoPreauthOnce(username, host, ikey, skey) {
         logger.warn("MFA checkDuoPreauth - duo-client failed: " + err);
         return "error";  // might retry
     }
-    return dResult.getString("result");
+    return {
+      user: username,
+      stat: dResult.getString("result"),
+      mesg: dResult.getString("status_msg")
+    };
 }
 
 // done with includes. checkDuoPreauth resumes
@@ -116,27 +133,35 @@ function duoPreauthOnce(username, host, ikey, skey) {
             // Go straight to second factor if we have to, or set up for an attribute lookup first.
             authCtx = input.getSubcontext("net.shibboleth.idp.authn.context.AuthenticationContext");
             mfaCtx = authCtx.getSubcontext("net.shibboleth.idp.authn.context.MultiFactorAuthenticationContext");
-            if (mfaCtx.isAcceptable()) {
 
-                // Look up the username
-                usernameLookupStrategyClass = Java.type("net.shibboleth.idp.session.context.navigate.CanonicalUsernameLookupStrategy");
-                usernameLookupStrategy = new usernameLookupStrategyClass();
-                bareUsername = usernameLookupStrategy.apply(input);
+            // Look up the username
+            usernameLookupStrategyClass = Java.type("net.shibboleth.idp.session.context.navigate.CanonicalUsernameLookupStrategy");
+            usernameLookupStrategy = new usernameLookupStrategyClass();
+            bareUsername = usernameLookupStrategy.apply(input);
 
-                // call the preauth function
-                result = duoPreauth( 
-                  bareUsername,
-                  "%{idp.duo.apiHost}",
-                  "%{idp.duo.integrationKey}",
-                  "%{idp.duo.secretKey}"
-                );
-                logger.info("MFA checkDuoPreauth - preauth " + bareUsername + " = " + result);
- 
-                if (result == "allow") {
+            // call the preauth function
+            result = duoPreauth( 
+              bareUsername,
+              "%{idp.duopreauth.apiHost}",
+              "%{idp.duopreauth.integrationKey}",
+              "%{idp.duopreauth.secretKey}"
+            );
+            logger.info("MFA checkDuoPreauth - preauth " 
+              + 'user="' + bareUsername 
+              + '" result="' + result.stat
+              + '" status_msg="' + result.mesg
+              + '"'
+            );
+            if (result.stat == "allow") {
+                if (mfaCtx.isAcceptable()) {
                     nextFlow = null;
                 } else {
-                    nextFlow = "authn/Duo";
+                    // MFA required, not enrolled
+                    mfaCtx.setEvent("DuoNotEnrolled");
+                    nextFlow = null;
                 }
+            } else {
+                nextFlow = "authn/Duo";
             }
 
             logger.debug("MFA checkDuoPreauth returns " + nextFlow);

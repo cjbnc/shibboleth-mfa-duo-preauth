@@ -51,6 +51,23 @@ your API host and keys.
 It may help to increase the "idp.loglevel.idp" to "DEBUG" in
 conf/logback.xml while doing initial testing.
 
+## Additional Notes
+
+The current version of this code uses two sets of Duo credentials. The
+preauth credential is setup to return "allow" when the user is not
+enrolled. The code will then skip the Duo iframe stage and return a
+successful login with an authn/Password context.
+
+The second credential is used to call the Duo iframe. It is setup to
+require a Duo login, or it will fail to allow the user if they are not
+enrolled. When the user returns successfully from the Duo iframe, we
+return a successful login with an authn/MFA context.
+
+When the REFEDS MFA authentication context is requested, the code will
+run the preauth as above. Users not enrolled in Duo will be sent to a
+custom error page to let them know that the resource they requested
+requires an MFA login.
+
 ## References
 
 * [DuoAuthnConfiguration](https://wiki.shibboleth.net/confluence/display/IDP30/DuoAuthnConfiguration)
